@@ -1,4 +1,5 @@
 // getaddrinfo.cpp : Defines the entry point for the console application.
+// rlum  200120829
 //
 
 #include <stdio.h>
@@ -8,9 +9,6 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
-//#include "stdafx.h"
-//#include <wspiapi.h>
-//#include <windows.h>
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -25,7 +23,7 @@
 #define DEBUG if (VERBOSE) printf
 
 #ifdef WIN32
-  WSADATA WSStartData;
+  WSADATA WSStartData;  
 
 void initialize_sockets()
 {
@@ -69,6 +67,7 @@ void cleanup_sockets()
     }
 }
 
+// formatmessage returns a wchar* 
 wchar_t* wsaerrorstr(int errnumber){
   DWORD dwFlags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
   LPCVOID lpSource = NULL;
@@ -93,13 +92,12 @@ wchar_t* wsaerrorstr(int errnumber){
   }
 }
 
-char*  wchar_to_char(wchar_t* orig,char* nstring){
+// have to convert from wide char to regular ascii
+char*  wchar_to_char(wchar_t* orig){
   size_t origsize = wcslen(orig)+1;
-  //const size_t newsize = 1000;
   size_t convertedChars = 0;
-  //char nstring[newsize];
+  char * nstring = (char*)malloc(origsize);
   wcstombs_s(&convertedChars, nstring, origsize, orig, _TRUNCATE);
-  //strcat_s(nstring, " (char *)");
   return nstring;
 }
 #endif
@@ -108,8 +106,7 @@ const char* getErrorString(){
 #ifdef WIN32
     int error = WSAGetLastError();
     wchar_t *error_msg = wsaerrorstr(error);
-    char *errorstring = (char*)malloc(1000);
-    const char *errstring = wchar_to_char(error_msg,errorstring);
+    const char *errstring = wchar_to_char(error_msg);
     return errstring;
 #else
    return (strerror(errno));
@@ -164,7 +161,14 @@ int main(int argc, char** argv){
         next = next->ai_next;
     }while(next);
   }else{
-    printf ("getaddrinfo failed\n");
+#ifdef WIN32
+    const char* errstring = getErrorString();
+#else
+    const char* errstring = gai_strerror(rc);
+#endif
+    printf ("getaddrinfo failed, error : %s\n", errstring);
+    free ((void*) errstring);
+    errstring = NULL;
   }
 
   cleanup_sockets();
